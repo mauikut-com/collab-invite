@@ -1,45 +1,42 @@
-import { useEffect, useState } from "react";
-// import { createClient } from "@supabase/supabase-js";
-
-// const supabase = createClient("", "");
-
-function parseLocation() {
-  const str = location.search;
-  return {
-    cb: str === "?agree"
-  }
-}
-
-function updateLocation(value) {
-  // switch value
-  location.search = "agree";
-}
+import { useEffect, useState } from 'react';
 
 function App() {
-  // const [countries, setCountries] = useState([]);
+  const [activity, setActivity] = useState(parseLocation().a);
+  const [deal, setDeal] = useState(parseLocation().d);
+  const [search, setSearch] = useState(location.search);
 
-  // useEffect(() => {
-  //   getCountries();
-  // }, []);
+  function parseLocation() {
+    const searchParams = new URLSearchParams(location.search);
+    return {
+      d: searchParams.get('d'),  // deal
+      a: searchParams.get('a')   // activity
+    }
+  }
 
-  // async function getCountries() {
-  //   const { data } = await supabase.from("countries").select();
-  //   setCountries(data);
-  // }
+  function newSearch(k, v) {
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.set(k, v);
+    return searchParams.toString();
+  }
 
-  const cb = parseLocation().cb
+  function updateActivity(str) {
+    setActivity(str);
+    history.replaceState({}, '', newSearch('a', str));
+  }
 
-// {countries.map((country) => (
-//   <li key={country.name}>{country.name}</li>
-// ))}
+  function updateDeal(bool) {
+    setDeal(bool);
+    history.replaceState({}, '', newSearch('d', bool));
+  }
+
   return (
     <>
-      <ul>
-        <li><input type="text"/></li>
-        <li><input type="checkbox" checked="y" onClick={(e) => console.log(e.target.checked)}/></li>
-        <li><input type="checkbox" checked="y" onChange={(e) => updateLocation(e.target.value)}/></li>
-        <li><input type="checkbox" checked={cb} onChange={updateLocation}/></li>
-      </ul>
+      <input type="text" value={activity} onChange={e => updateActivity(e.target.value)} />
+
+      <label>deal:
+      <input
+        type="checkbox" checked={deal} xxx="hide checkbox; style the label to look like button"
+        onChange={e => updateDeal(e.target.checked)}/></label>
     </>
   );
 }
