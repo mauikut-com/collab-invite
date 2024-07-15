@@ -9,11 +9,11 @@
   }
   let params = parseLocation();
 
-  $: activity = params.a
-  $: deal = params.d
+  $: activity = params.a;
+  $: deal = params.d;
 
   function fmt(activity, deal) {
-    return `?a=${activity}&d=${deal}`
+    return `?a=${activity}&d=${deal}`;
   }
   $: history.replaceState({}, '', fmt(activity, deal));
   
