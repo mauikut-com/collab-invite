@@ -48,3 +48,93 @@ export default writable(0)
 
 ## Licenses
 - https://github.com/kevquirk/simple.css/blob/main/LICENSE
+
+??:
+new svelte kit 5
+<script>
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+
+  function globalVarPromise(globalVar) {
+    const pred = () => {
+      try {
+        return window.hasOwnProperty(globalVar);
+      } catch (refError) {
+        return false;
+      }
+    }
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        if (!pred()) return;
+        clearInterval(interval);
+        resolve();
+      };
+      const interval = setInterval(check, 13);
+      check();
+
+      // Leave the following dead code until we want warning for something like
+      // unsupported platform (wherever expected global variable doesn't exist).
+      // function globalVarPromise(globalVar, timeout) {
+      // ...
+      // if (!timeout) return;
+      // setTimeout(() => {
+        // clearInterval(interval);
+        // reject();
+      // }, timeout);
+    });
+  }
+
+  function fmt(activity, deal) {
+    return `?a=${activity}&d=${deal}`
+  }
+
+  // async function parseLocation() {
+    // await globalVarPromise('location');
+    // const sp = new URLSearchParams(location.search);
+    // return {  // activity deal
+      // a: sp.get('a'),
+      // d: sp.get('d') != 'n',
+    // }
+  // }
+  // let params = parseLocation();
+
+  $: activity = $page.url.searchParams.get('a') || '';
+  let deal = $page.url.searchParams.get('d') || '';
+  $: dealIsChecked = deal != 'n';
+
+  // ?? ReferrenceError because history isn't available from the beginning
+
+  function copyUrlToClipboard() {
+    // Invariant: Reasonable (e.g. non-robot) wait time until interaction.
+    navigator.clipboard.writeText(location.href);
+  }
+
+  function updateUrl(activity, dealIsChecked) {
+    console.log("yaa")
+    // ?? latch to copyUrlToClipboard
+    //goto("?region")
+    goto(`?a=${activity}&a=n`)
+  }
+
+  // Update URL of current history entry on params change.
+  //$: history.replaceState({}, '', fmt(activity, deal));
+  $: updateUrl(activity, dealIsChecked)
+
+</script>
+
+<main>
+  <input type="text" bind:value={activity} />
+
+  <label>deal:
+    <input
+      type="checkbox"
+      bind:checked={dealIsChecked}
+      xxx="hide checkbox; style label to look like button" />
+  </label>
+  
+  <button on:click={copyUrlToClipboard}>Copy to Clipboard</button>
+
+</main>
+
+<style>
+</style>
