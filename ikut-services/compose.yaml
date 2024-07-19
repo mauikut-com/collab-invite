@@ -1,0 +1,21 @@
+services:
+  postgres:
+    container_name: ikut-postgres
+    image: postgres:17beta2-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PW}
+      - POSTGRES_DB=${POSTGRES_DB}  # optional: default db
+    ports:
+      - "5432:5432"
+    restart: always
+
+  pgadmin:
+    container_name: ikut-pgadmin
+    image: dpage/pgadmin4:8.9
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_MAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PW}
+    ports:
+      - "5050:80"
+    restart: always
