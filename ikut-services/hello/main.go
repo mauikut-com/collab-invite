@@ -7,11 +7,11 @@ import (
 	// "log"
 	"net/http"
 	"os"
-	// "time"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	// "github.com/gin-gonic/gin/binding"
-	// "github.com/go-playground/validator/v10"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -52,16 +52,25 @@ func eventCreate(conn *pgx.Conn, inviter_user_id int, location string) error {
 type Event struct {
 	// ?? ordering, nobackdate
 	Start    string `json:"start"    binding:"datetime=2006-01-02T15:04:05Z07:00,required"`
-	End      string `json:"end"      binding:"datetime=2006-01-02T15:04:05Z07:00,required"`
+	End      string `json:"end"      binding:"datetime=2006-01-02T15:04:05Z07:00"`
 	Location string `json:"location" binding:"required"`
 }
 
-// var nobackdate validator.Func = func(fl validator.FieldLevel) bool {
-// 	if date, ok := fl.Field().Interface().(time.Time); ok {
-// 		return time.Now().After(date)
-// 	}
-// 	return false
-// }
+// Validations: No backdates for Start; Start End ordering.
+func EventStructLevel(sl validator.StructLevel) {
+	item := sl.Current().Interface().(Event)
+	startAsTime, _ := time.Parse(time.RFC3339, item.Start)
+	endAsTime, _ := time.Parse(time.RFC3339, item.End)
+
+	if time.Now().After(startAsTime) {
+		sl.ReportError(item.Start, "Start", "start", "nobackdate", "")
+	}
+
+	if startAsTime.After(endAsTime) {
+		sl.ReportError(item.End, "End", "end", "endgtestart", "")
+	}
+}
+
 
 // // "use a single instance of Validate, it caches struct info"
 // // 
@@ -84,6 +93,10 @@ func main() {
 
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"127.0.0.1",})
+
+	if ginV, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		ginV.RegisterStructValidation(EventStructLevel, Event{})
+	}
 
 	router.POST("/event", func(gc *gin.Context) {
 		live := true
