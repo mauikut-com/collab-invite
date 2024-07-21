@@ -3,8 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	// "html"
+	// "log"
+	"net/http"
 	"os"
+	// "time"
 
+	"github.com/gin-gonic/gin"
+	// "github.com/gin-gonic/gin/binding"
+	// "github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -36,22 +43,73 @@ func eventCreate(conn *pgx.Conn, inviter_user_id int, location string) error {
 
 	err := pgx.BeginFunc(context.Background(), conn, func(tx pgx.Tx) error {
 		event_id, txErr := tryEventInsert(tx)
-		_, txErr = tryInviterInsert(tx, event_id)
+		_, txErr         = tryInviterInsert(tx, event_id)
 		return txErr
 	})
 	return err
 }
 
-func main() {
-	conn, err := pgx.Connect(context.Background(), os.Getenv("CONNECT_URL"))
+type Event struct {
+	// ?? ordering, nobackdate
+	Start    string `json:"start"    binding:"datetime=2006-01-02T15:04:05Z07:00,required"`
+	End      string `json:"end"      binding:"datetime=2006-01-02T15:04:05Z07:00,required"`
+	Location string `json:"location" binding:"required"`
+}
+
+// var nobackdate validator.Func = func(fl validator.FieldLevel) bool {
+// 	if date, ok := fl.Field().Interface().(time.Time); ok {
+// 		return time.Now().After(date)
+// 	}
+// 	return false
+// }
+
+// // "use a single instance of Validate, it caches struct info"
+// // 
+// // https://github.com/go-playground/validator/blob/master/_examples/struct-level/main.go
+// var vali *validator.Validate
+
+func connectOrExit() *pgx.Conn {
+	connUrl := os.Getenv("CONNECT_URL")
+	conn, err := pgx.Connect(context.Background(), connUrl)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		fmt.Fprintf(os.Stderr, "CONNECT_URL=%s\n%v", connUrl, err)
 		os.Exit(1)
 	}
+	return conn
+}
+
+func main() {
+	conn := connectOrExit()
 	defer conn.Close(context.Background())
 
-	err = eventCreate(conn, 1, "kb jeruk")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-	}
+	router := gin.Default()
+	router.SetTrustedProxies([]string{"127.0.0.1",})
+
+	router.POST("/event", func(gc *gin.Context) {
+		live := true
+
+		var item Event
+		bindingErr := gc.ShouldBindJSON(&item)
+		if bindingErr != nil {
+			live = false
+			fmt.Fprintf(os.Stderr, "%v\n", bindingErr)
+		}
+
+		user_id := 1
+		connErr := eventCreate(conn, user_id, item.Location)
+		// connErr := eventCreate(conn, user_id, item.location)
+		if connErr != nil {
+			live = false
+			fmt.Fprintf(os.Stderr, "%v\n", connErr)
+		}
+
+		if live {
+			gc.JSON(http.StatusOK, gin.H{ "itemok": item })
+		} else {
+			gc.JSON(http.StatusInternalServerError, "todo:formy")
+		}
+
+	})
+
+	router.Run()
 }
