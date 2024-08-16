@@ -87,12 +87,21 @@ func connectOrExit() *pgx.Conn {
 	return conn
 }
 
+func noCors() gin.HandlerFunc {
+	return func(gc *gin.Context) {
+		gc.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		gc.Next()
+	}
+}
+
+
 func main() {
 	conn := connectOrExit()
 	defer conn.Close(context.Background())
 
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"127.0.0.1",})
+	router.Use(noCors())  // ?? config dev
 
 	if ginV, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		ginV.RegisterStructValidation(EventStructLevel, Event{})

@@ -1,10 +1,12 @@
 use axum::{response::Html, routing::{get, post}, Router, http::{Method, HeaderValue, StatusCode}};
 use tower_http::cors::CorsLayer;
+use std::env;
+use dotenv::dotenv;
 
 #[tokio::main]
 async fn main() {
-    // ?? DATABASE_URL=postgres://pguser:changeme@0.0.0.0:5432/$POSTGRES_USER?sslmode=disable
-    let db_connection_str = "postgres://pguser:changeme@0.0.0.0:5432/pguser?sslmode=disable";
+    dotenv().ok();
+    let db_connection_str = env::var("DATABASE_URL").expect("DATABASE_URL must be set.");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .acquire_timeout(std::time::Duration::from_secs(3))
@@ -31,10 +33,10 @@ async fn main() {
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 struct Event {
     name: String,
-    // age: NonZeroU8,
+    location: String,
     // #[serde(flatten)]
     // extra: Map<String, Value>,
 }
@@ -42,11 +44,12 @@ struct Event {
 async fn db_insert(pool: &PgPool, event: Event) -> anyhow::Result<i64> {
     let rec = sqlx::query!(
         r#"
-INSERT INTO event ( name )
-VALUES ( $1 )
+INSERT INTO event ( name, location )
+VALUES ( $1, $2 )
 RETURNING id
         "#,
-        event.name
+        event.name,
+        event.location
     )
     .fetch_one(pool)
     .await?;
@@ -54,13 +57,18 @@ RETURNING id
     Ok(rec.id)
 }
 
+use axum::{
+    response::Json,
+};
 
-// ?? axum request body
-async fn event_create(State(pool): State<PgPool>) -> Html<String> {
-    let res = db_insert(&pool, Event {name: String::from("eduardo")}).await;
+async fn event_create(
+    State(pool): State<PgPool>,
+    Json(ev): Json<Event>,
+) -> Html<String> {
+    let Event{name, location }= ev;
+    let res = db_insert(&pool, Event {name, location}).await;
     match res {
-        // Ok(id) => Html("<h1>ok</h1>"),
-        _ => Html(String::from("<h1>terrible error happened!</h1>"))
+        _ => Html(String::from("todo"))
     }
 }
 
